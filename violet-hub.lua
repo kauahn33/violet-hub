@@ -508,8 +508,6 @@ RunService.RenderStepped:Connect(function()
             local GoalCF = CFrame.new(CurrentCF.Position, TargetPos)
             
             -- Smoothness calculation
-            -- Se Smoothness for 0, é instantâneo. Se for 1, não move.
-            -- Usamos Lerp com alpha. Alpha 1 = Instant, Alpha 0.1 = Smooth.
             local Alpha = math.clamp(1 - Settings.Combat.Smoothness, 0.01, 1)
             
             Camera.CFrame = CurrentCF:Lerp(GoalCF, Alpha)
@@ -557,4 +555,94 @@ RunService.RenderStepped:Connect(function()
                         txt.Size = UDim2.fromScale(1,1)
                         txt.TextColor3 = Settings.UI.Theme.Accent
                         txt.TextStrokeTransparency = 0
-                        txt.Font = Enum.Font.GothamB
+                        txt.Font = Enum.Font.GothamBold
+                        txt.TextSize = 14
+                        txt.Name = "Lbl"
+                    end
+                    Char.XH_NameInfo.Lbl.Text = plr.Name .. " [" .. math.floor(Hum.Health) .. " HP]"
+                    Char.XH_NameInfo.Lbl.TextColor3 = IsVisible(HRP) and Color3.fromRGB(0, 255, 100) or Settings.UI.Theme.Accent
+                elseif Char:FindFirstChild("XH_NameInfo") then
+                    Char.XH_NameInfo:Destroy()
+                end
+
+                -- >> TRACERS (Lines) <<
+                if Settings.Visuals.Tracers then
+                    local ScreenPos, OnScreen = Camera:WorldToViewportPoint(HRP.Position)
+                    if OnScreen then
+                        if not DrawingObjects.Tracers[plr.Name] then
+                            local line = Drawing.new("Line")
+                            line.Thickness = 1.5
+                            line.Color = Settings.UI.Theme.Accent
+                            DrawingObjects.Tracers[plr.Name] = line
+                        end
+                        
+                        local Line = DrawingObjects.Tracers[plr.Name]
+                        Line.Visible = true
+                        Line.From = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y) -- De baixo
+                        Line.To = Vector2.new(ScreenPos.X, ScreenPos.Y)
+                    else
+                        if DrawingObjects.Tracers[plr.Name] then DrawingObjects.Tracers[plr.Name].Visible = false end
+                    end
+                else
+                    if DrawingObjects.Tracers[plr.Name] then 
+                        DrawingObjects.Tracers[plr.Name].Visible = false 
+                    end
+                end
+
+            else
+                -- Limpeza se o player morreu ou não deve ser mostrado
+                if Char:FindFirstChild("XH_Highlight") then Char.XH_Highlight:Destroy() end
+                if Char:FindFirstChild("XH_NameInfo") then Char.XH_NameInfo:Destroy() end
+                if DrawingObjects.Tracers[plr.Name] then DrawingObjects.Tracers[plr.Name].Visible = false end
+            end
+        end
+    end
+    
+    -- Limpa tracers de players que saíram
+    for name, line in pairs(DrawingObjects.Tracers) do
+        if not Players:FindFirstChild(name) then
+            line:Remove()
+            DrawingObjects.Tracers[name] = nil
+        end
+    end
+end)
+
+
+
+-- Função de Notificação Customizada (Tema Roxo)
+task.spawn(function()
+    local gui = game:GetService("CoreGui"):FindFirstChild("XotaHB_Purple") or game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui"):FindFirstChild("XotaHB_Purple")
+    if not gui then return end
+
+    local notifFrame = Instance.new("Frame")
+    notifFrame.Size = UDim2.fromOffset(250, 50)
+    notifFrame.Position = UDim2.new(0.5, -125, -0.2, 0) -- Começa fora da tela (topo)
+    notifFrame.BackgroundColor3 = Color3.fromRGB(40, 30, 55)
+    notifFrame.BorderSizePixel = 0
+    notifFrame.Parent = gui
+    
+    local stroke = Instance.new("UIStroke", notifFrame)
+    stroke.Color = Color3.fromRGB(140, 60, 255)
+    stroke.Thickness = 2
+    
+    local corner = Instance.new("UICorner", notifFrame)
+    corner.CornerRadius = UDim.new(0, 8)
+
+    local label = Instance.new("TextLabel", notifFrame)
+    label.Size = UDim2.new(1, 0, 1, 0)
+    label.BackgroundTransparency = 1
+    label.Text = "💜 Script Loaded Successfully"
+    label.TextColor3 = Color3.fromRGB(240, 240, 255)
+    label.Font = Enum.Font.GothamBold
+    label.TextSize = 14
+
+    -- Animação de Entrada
+    local TweenService = game:GetService("TweenService")
+    TweenService:Create(notifFrame, TweenInfo.new(0.5, Enum.EasingStyle.Back), {Position = UDim2.new(0.5, -125, 0.05, 0)}):Play()
+    
+    -- Espera e Saída
+    task.wait(4)
+    TweenService:Create(notifFrame, TweenInfo.new(0.5, Enum.EasingStyle.Quad), {Position = UDim2.new(0.5, -125, -0.2, 0)}):Play()
+    task.wait(0.5)
+    notifFrame:Destroy()
+end)

@@ -1,7 +1,7 @@
 --[[
 ═══════════════════════════════════════════════════════════════
 💜 VIOLET HUB - ELITE EDITION 💜
-Versão: 4.2.2 (ANTI-CRASH & CUSTOM NOTIFIER)
+Versão: 4.2.2 (ANTI-CRASH, CUSTOM NOTIFIER & FRIEND CHECK)
 ═══════════════════════════════════════════════════════════════
 ]]
 
@@ -20,6 +20,7 @@ local function InitVioletHub()
         Combat = {
             Enabled = false,
             TeamCheck = false,
+            FriendCheck = false, -- [NOVO] Adicionado Friend Check no Combate
             WallCheck = false,
             TargetPart = "Head",
             FovSize = 100,
@@ -30,7 +31,8 @@ local function InitVioletHub()
             Highlight = false,
             Names = false,
             Tracers = false,
-            TeamCheck = false
+            TeamCheck = false,
+            FriendCheck = false -- [NOVO] Adicionado Friend Check no Visual
         },
         UI = {
             Theme = {
@@ -385,6 +387,7 @@ local function InitVioletHub()
     CreateAdjuster(PageCombat, "FOV Size", "Combat", "FovSize", 10, 20, 500)
     CreateAdjuster(PageCombat, "Smoothness", "Combat", "Smoothness", 0.1, 0, 1) 
     CreateToggle(PageCombat, "Team Check", "Combat", "TeamCheck")
+    CreateToggle(PageCombat, "Friend Check", "Combat", "FriendCheck") -- [NOVO] Adicionado no menu Combat
     CreateToggle(PageCombat, "Wall Check", "Combat", "WallCheck")
     
     CreateButton(PageCombat, "Target Mode", Settings.Combat.TargetPart, function()
@@ -424,9 +427,27 @@ local function InitVioletHub()
     end)
     
     CreateToggle(PageVisuals, "Team Check (Vis)", "Visuals", "TeamCheck")
+    CreateToggle(PageVisuals, "Friend Check (Vis)", "Visuals", "FriendCheck") -- [NOVO] Adicionado no menu Visuals
 
     local function IsTeamMate(plr)
         return (plr.Team and LocalPlayer.Team and plr.Team == LocalPlayer.Team) or false
+    end
+
+    -- [NOVO] Sistema de Cache de Amigos (Para evitar que o Roblox pause/trave o script a cada frame)
+    local FriendCache = {}
+    local function IsFriend(plr)
+        if FriendCache[plr.UserId] == nil then
+            FriendCache[plr.UserId] = false -- Previne yield/spam no loop
+            task.spawn(function()
+                local success, result = pcall(function()
+                    return LocalPlayer:IsFriendsWith(plr.UserId)
+                end)
+                if success then
+                    FriendCache[plr.UserId] = result
+                end
+            end)
+        end
+        return FriendCache[plr.UserId]
     end
 
     local function IsVisible(targetPart)
@@ -447,6 +468,8 @@ local function InitVioletHub()
         for _, v in pairs(Players:GetPlayers()) do  
             if v ~= LocalPlayer and v.Character and v.Character:FindFirstChild("Humanoid") and v.Character.Humanoid.Health > 0 then  
                 if Settings.Combat.TeamCheck and IsTeamMate(v) then continue end  
+                if Settings.Combat.FriendCheck and IsFriend(v) then continue end -- [NOVO] Ignora se for amigo
+                
                 local Root = v.Character:FindFirstChild(Settings.Combat.TargetPart) or v.Character:FindFirstChild("HumanoidRootPart")  
                 if not Root then continue end  
 
@@ -491,7 +514,10 @@ local function InitVioletHub()
                     local HRP = Char:FindFirstChild("HumanoidRootPart")  
                     local Hum = Char:FindFirstChild("Humanoid")  
                       
-                    local ShouldShow = not (Settings.Visuals.TeamCheck and IsTeamMate(plr)) and Hum and Hum.Health > 0  
+                    -- [NOVO] Lógica atualizada para Friend Check nos Visuais (ESP)
+                    local ShouldShow = not (Settings.Visuals.TeamCheck and IsTeamMate(plr)) 
+                                       and not (Settings.Visuals.FriendCheck and IsFriend(plr))
+                                       and Hum and Hum.Health > 0  
 
                     if ShouldShow and HRP then  
                         if Settings.Visuals.Highlight then
